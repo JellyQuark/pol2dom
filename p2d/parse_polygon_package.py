@@ -85,10 +85,20 @@ def parse_problem_from_polygon(polygon):
     def pol_path(*path):
         return os.path.join(polygon, *path)
 
+    def get_language():
+        dbtype_list = os.listdir(pol_path('statements'))
+        for dbtype in dbtype_list:
+            if not os.path.isfile(pol_path('statements', dbtype)) and dbtype[0] != '.':
+                return dbtype
+        logging.error('Unable to find statements in directory \'%s\'.' % polygon)
+        exit(1)
+
     logging.debug('Parsing the Polygon package directory \'%s\'.' % polygon)
     if not os.path.isfile(pol_path('problem.xml')):
         logging.error('The directory \'%s\' is not a Polygon package (as it does not contain the file \'problem.xml\'.' % polygon)
         exit(1)
+
+    language = get_language()
 
     problem = {}
 
@@ -113,7 +123,7 @@ def parse_problem_from_polygon(polygon):
     # Statement
     problem['statement'] = {}
     statement_json_path = pol_path(
-        'statements', 'english', 'problem-properties.json')
+        'statements', language, 'problem-properties.json')
     with open(statement_json_path) as f:
         statement_json = json.load(f)
         for section in ['legend', 'input', 'output', 'interaction', 'tutorial']:
@@ -125,8 +135,8 @@ def parse_problem_from_polygon(polygon):
         samples = []
         for sample_json in statement_json['sampleTests']:
             sample = {
-                'in': pol_path('statements', 'english', sample_json['inputFile']),
-                'out': pol_path('statements', 'english', sample_json['outputFile']),
+                'in': pol_path('statements', language, sample_json['inputFile']),
+                'out': pol_path('statements', language, sample_json['outputFile']),
                 'explanation': explanations.get(sample_id)
             }
             samples.append(sample)
@@ -135,7 +145,7 @@ def parse_problem_from_polygon(polygon):
 
     # Detecting images
     problem['statement']['images'] = []
-    statement_path = pol_path('statements', 'english')
+    statement_path = pol_path('statements', language)
     image_extensions = ['.jpg', '.gif', '.png', '.jpeg', '.pdf', '.svg']
     for f in os.listdir(statement_path):
         if any([f.lower().endswith(ext) for ext in image_extensions]):
@@ -154,8 +164,8 @@ def parse_problem_from_polygon(polygon):
         input_format = testset.find('input-path-pattern').text
         output_format = testset.find('answer-path-pattern').text
         # Fetch samples from statements directory (for custom output)
-        sample_input_format = input_format.replace('tests/', os.path.join('statements', 'english') + '/example.')
-        sample_output_format = output_format.replace('tests/', os.path.join('statements', 'english') + '/example.')
+        sample_input_format = input_format.replace('tests/', os.path.join('statements', language) + '/example.')
+        sample_output_format = output_format.replace('tests/', os.path.join('statements', language) + '/example.')
 
         for test in testset.iter('test'):
             if 'sample' in test.attrib and not cmp(pol_path(input_format % local_id), pol_path(sample_input_format % local_id)):
